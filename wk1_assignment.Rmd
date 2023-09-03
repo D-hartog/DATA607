@@ -1,0 +1,114 @@
+---
+title: 'WK1: Loading Data Into a Data Frame'
+author: "Dirk Hartog"
+date: "2023-09-03"
+output:
+  html_document:
+    df_print: paged
+---
+
+## OVERVIEW
+
+The article and the subsequent data that I choose to work with is titled "Congress Today Is Older Than It's Ever Been: OK, boomer? More like boomer, OK!" publised on the FiveThirtyEight.com. [The articl can be found here](https://fivethirtyeight.com/features/aging-congress-boomers/)
+
+The article describes some basic statistics, identifies and visualizes trends in the ages of the memebers of The House of Representatives and the Senate in the US starting with the 66th Congress (1919 - 1921) to the 118th Congress (2023-2025).
+
+
+```{r echo = TRUE}
+# loading in the necessary libraries 
+library(tidyverse)
+```
+
+Reading in the data via link to the raw data on github
+
+```{r echo = TRUE}
+congress_data <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/congress-demographics/data_aging_congress.csv")
+
+head(congress_data)
+```
+
+### Subsetting the data
+
+I wanted to filter the data to include the parties, chamber of congress, and age years in each of the Congressional periods for the last 20 years. I used age_years to represent the age of the member of congress. 
+
+* congress: The number of the Congress that this member’s row refers to
+* start_date: First day of a Congress
+* age_years: In the data age_years was calculated first by calculating age_days: start_date minus birthday. Then taking age_days and dividing by 365.25
+* chamber: The chamber a member of Congress sat in: Senate or House
+* party_code: A code that indicates a member’s party
+* generation: Generation the member belonged to, based on the year of birth
+
+The code below is how I filtered and renamed the columns.
+
+```{r echo = TRUE}
+congress_sub <- congress_data %>% filter(start_date >= "2003-01-03") %>% 
+  select(congress, start_date, age_years, chamber, party_code, generation)
+
+names(congress_sub) <- c("congress_served", "start_date", "age_years", "chamber", "party", "generation")
+
+dim(congress_sub)
+```
+
+### Changing the data types for easier manipulation
+
+* Converting the columns *chamber, generation* to *factor* data type
+* Converting *party* to a *character* data type
+* Converting *start_date* to *date* data type
+
+```{r echo = TRUE}
+congress_sub$chamber <- as.factor(congress_sub$chamber)
+congress_sub$generation <- as.factor(congress_sub$generation)
+congress_sub$party <- as.character(congress_sub$party)
+congress_sub$start_date <- as.Date(congress_sub$start_date, tryFormats = "%Y-%m-%d")
+
+glimpse(congress_sub)
+
+```
+
+### Replace the party code with the actual name of the party
+
+```{r echo = TRUE}
+congress_sub$party[congress_sub$party == "100"] <- "Democrat"
+congress_sub$party[congress_sub$party == "200"] <- "Republican"
+congress_sub$party[congress_sub$party =="328"] <- "Inependent"
+```
+
+### Exploratory visualizations
+
+1. Bar graph: Visualizing the total amount each generation has been represented in congress over the past 20 years. 
+
+```{r echo = TRUE}
+congress_sub %>%
+  mutate(generation = generation %>% fct_infreq() %>% fct_rev()) %>%
+  ggplot(aes(x = generation)) +
+  geom_bar()
+```
+
+2. Line plot: Plotting trends of the median age in each party at the start of each congress from 2003 - 2023
+
+```{r echo = TRUE, message = FALSE} 
+plot2 <- congress_sub %>% group_by(start_date, party) %>% summarize(med_age_years = round(median(age_years), 2))
+```
+```{r echo = TRUE}
+ggplot(data = plot2, mapping = aes(x = start_date, y = med_age_years)) + 
+  geom_line(aes(color = party)) +
+  geom_point() +
+  scale_color_manual(values=c('Blue','Green', 'Red'))
+
+```
+
+
+## CONCLUSIONS 
+
+In the article it mentioned several reasons for the increased age of the US Congress. Although not an exhautive list some of these reasons include
+
+* The US population has also gotten older 
+    + Increased life expectancy
+    + Fewer births leading to less younger people 
+* Members of congress are more likely to win re-election for a second term 
+    + Older individuals tend to vote for candidates similar to them  
+    + Older members of Congress tend to focus on issues that impact older individuals 
+* Baby Boomers represent the majority of Congress members today (48%)
+
+Other areas that would be interesting to visualize are the bills introduced by the memebers of congress and the age of their coinstiuents.
+
