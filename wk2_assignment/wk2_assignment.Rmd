@@ -1,0 +1,87 @@
+---
+title: "Wk2: SQL and R "
+author: "Dirk Hartog"
+date: "2023-09-09"
+output: pdf_document
+---
+
+# SQL and R
+
+**STEP 1:** 
+
+## For this problem I created a new database 'movies' in MySQL using the DBMS MySQLWorkbench. The sql code file can be found here **[SQL  CODE](https://github.com/D-hartog/DATA607/blob/a72d46a33f4189ed391c2a05806e0fafadc5fe6d/wk2_sql_script.sql)**
+
+**STEP 2:** 
+
+## Since I wanted to do most of the data transfromation and wrangling in R studio I connected to the local server in MySQL and loaded in the 
+
+*I first needed to load in all the packages I intended to use*
+```{r message=FALSE}
+library(DBI)
+library(RMySQL)
+library(dplyr)
+library(keyring)
+```
+
+*Connecting to the database and loading the table into R was successful*
+```{r connect to MySQL}
+
+mydb <-  dbConnect(dbDriver("MySQL"), 
+                   user = key_get("un"), 
+                   password = key_get("pw"), 
+                   dbname = 'movies', 
+                   host = 'Dirks-MacBook-Air.local', 
+                   port = 3306)
+dbListTables(mydb)
+
+movie_ratings <- dbReadTable(mydb, "movie_ratings")
+movie_ratings
+```
+
+**STEP 3:** 
+
+## As this was a small data set we could view a lot of information of the data frame by calling glimpse. The data types, column names and getting an idea of, any missing values as well as the values in each variable or column. 
+
+```{r view df, echo=FALSE}
+glimpse(movie_ratings)
+```
+**STEP 4:** 
+
+## I also wanted to get some summary statistics about the ratings of each movie. 
+
+```{r}
+summary(movie_ratings)
+```
+
+**STEP 5:** 
+
+## Next was deciding how to handle missing values. Looking at the mean and median values in this data set were similar. For this particular data set I decided to use the mean ratings for each movie to fill in the NA values. 
+
+```{r}
+movie_ratings$barbie[is.na(movie_ratings$barbie)] <- mean(movie_ratings$barbie, na.rm = TRUE)
+
+movie_ratings$oppenheimer[is.na(movie_ratings$oppenheimer)] <- mean(movie_ratings$oppenheimer, na.rm = TRUE)
+
+movie_ratings$the_little_mermaid[is.na(movie_ratings$the_little_mermaid)] <- mean(movie_ratings$the_little_mermaid, na.rm = TRUE)
+
+movie_ratings$spiderman_across_the_spiderverse[is.na(movie_ratings$spiderman_across_the_spiderverse)] <- mean(movie_ratings$spiderman_across_the_spiderverse, na.rm = TRUE)
+
+movie_ratings$the_super_mario_bros_movie[is.na(movie_ratings$the_super_mario_bros_movie)] <- mean(movie_ratings$the_super_mario_bros_movie, na.rm = TRUE)
+
+```
+
+*As we see from the summary statistics the mean ratings of each movie did not change when we filled in the NA values with the movies respective mean.* 
+
+```{r}
+summary(movie_ratings)
+```
+
+**CONCLUSION:** 
+
+## Other solutions to this problem include the following
+
+1. To make gathering data easier and efficient would be to create a google form survey. This collects the responses and can populates them into an excel spreadsheet. This can then be easily read into an R data frame.
+
+2. Finding other techniques to encrypt the username and password to connect to MySQL would also be something to explore in the future. While this program does not send the username and password directly there are still ways of accessing it. There are many packages in R that are used for creating a secure flow of information that need to be explored. 
+
+
