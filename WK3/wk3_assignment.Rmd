@@ -1,0 +1,109 @@
+---
+title: 'Wk3: R Character Manipulation and Date Processing'
+author: "Dirk Hartog"
+date: "2023-09-15"
+output: pdf_document
+---
+```{r load libraries, echo = FALSE}
+library(tidyverse)
+library(stringr)
+```
+
+
+## QUESTION 1: Using the 173 majors listed in fivethirtyeight.com’s College Majors dataset [https://fivethirtyeight.com/features/the-economic-guide-to-picking-a-college-major/], provide code that identifies the majors that contain either "DATA" or "STATISTICS"
+
+The raw data can be read into a data frame
+```{r load the data}
+url <- "https://raw.githubusercontent.com/fivethirtyeight/data/master/college-majors/majors-list.csv"
+major_list <- read_csv(url, show_col_types = FALSE)
+glimpse(major_list)
+```
+
+Using the *stringr* library we can use regular expressions to identify majors that meet specific criteria. We can filter the original data frame to find the majors that include the word "DATA" or "STATISTICS"
+
+```{r filter df}
+major_list %>% 
+  filter(str_detect(Major, "DATA|STATISTICS"))
+```
+
+## QUESTION 2: Write code that transforms data: 
+I first created a vector with a long string containing many fruits. My goal was to match each fruit, create a seperate string, and store it in a character vector. 
+
+```{r transform string into a vector }
+fruits <- "bell pepper, bilberry, blackberry, blood orange, blueberry, cantaloupe, chili pepper, cloudberry, elderberry, lime, lychee, mulberry, olive, salal berry"
+
+# pattern to match each fruit
+pattern <- "\\w+\\s?\\w+"
+
+# find each fruit with str_match_all
+fruit_list <- str_match_all(fruits, pattern)
+
+#use unlist() to unpack the items into a vector 
+fruit_vector <- unlist(fruit_list)
+fruit_vector
+
+```
+
+## QUESTION 3: Describe, in words, what these expressions will match:
+
+**A.** The expression **(.)\1\1** will match strings with the character captured by the (.) appearing three times in a row. See the example below. 
+
+```{r}
+x <- "aaaxyzccc"
+# The regular expression needs to expressed in it's string form 
+str_view(x, "(.)\\1\\1")
+```
+
+**B.** The expression **"(.)(.)\\2\\1"** will match any string with any two characters grouped by each (.) that appear consecutively in reverse order. See the example below. 
+
+```{r}
+str_view(words, "(.)(.)\\2\\1")
+```
+
+**C.** The expression **"(..)\\1"** will return a string that repeats a group of any two characters "(..)". See example below. 
+
+```{r}
+z <- "gntntlw"
+str_view(z, "(..)\\1")
+```
+
+**D.** The expression **"(.).\\1.\\1"** will match any string that alternates the character grouped in (.) with any character. See the example below. 
+
+```{r}
+a <- "gafrabafa"
+str_view(a,"(.).\\1.\\1" )
+```
+
+**E.** The expression **"(.)(.)(.).*\\3\\2\\1"** will match any string with three groups of characters that are sperated by any character appearing zero or more times followed by the same cahracters in each group but in reverse order. See the example below.
+
+```{r}
+b <- "habcxycbai"
+str_view(b, "(.)(.)(.).*\\3\\2\\1")
+```
+
+## QUESTION 4: Construct regular expressions based on these criteria
+
+**A.** Start and end with the same character. 
+
+```{r}
+# we will view the first five matches
+head(str_view(words, "^(.).*\\1$"))
+```
+
+
+**B.** Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.).
+
+```{r}
+# we will view the first 5 matches 
+head(str_view(words, "(..).*\\1"))
+```
+
+
+**C.** Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
+
+```{r}
+# we will view the first five matches
+head(str_view(words, "(.).*\\1.*\\1"))
+```
+
+
