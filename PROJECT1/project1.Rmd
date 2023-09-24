@@ -1,0 +1,112 @@
+---
+title: "Project 1"
+author: "Dirk Hartog"
+date: "2023-09-24"
+output: pdf_document
+---
+# In this project, you’re given a text file with chess tournament results where the information has some structure. Your job is to create an R Markdown file that generates a .CSV file (that could for example be imported into a SQL database). 
+
+```{r load libraries, echo = TRUE, message = FALSE}
+library(tidyverse)
+```
+
+
+```{r read in the file}
+url <- "https://raw.githubusercontent.com/D-hartog/DATA607/main/PROJECT1/chess.txt"
+
+chess_txt <- read.csv("https://raw.githubusercontent.com/D-hartog/DATA607/main/PROJECT1/chess.txt")
+head(chess_txt, 9)
+```
+
+# Separate out the rows with the information we need and create two columns using bind_cols and save it to a new data frame data.
+
+```{r seperate and bind}
+data <- bind_cols(chess_txt[seq(4,195,3),], chess_txt[seq(5,195,3),])
+# Rename the two columns
+colnames(data) <- c("top_row", "bottom_row")
+head(data, 6)
+```
+
+# Use the seperate_wider_delim to separate each column in the top_row by "|" to create new columns with the player's name and total points.
+
+```{r seperate top_row column, warning=FALSE}
+data <- data %>%  
+  separate_wider_delim(
+    top_row,
+    delim = "|",
+    names = c("num", "player_name", "total_points"), 
+    too_many = "debug"
+  )
+data[,c("num","top_row", "top_row_ok", "top_row_pieces")] <- NULL
+```
+
+# Repeat the above to the bottom_row column to get the state and pre-rank for each palyer.  Remove uneccessary columns.  
+```{r separate bottome_row column, warning=FALSE}
+data <- data %>%  
+  separate_wider_delim(
+    bottom_row,
+    delim = "|",
+    names = c("state", "pre_rank"), 
+    too_many = "debug"
+  )
+
+data[, c("bottom_row","bottom_row_ok", "bottom_row_remainder", "bottom_row_pieces")] <- NULL
+
+head(data)
+```
+
+# Extract the pre-rank for each player from the pre-rank column using a combination of a regular expression to parse the numbers and a for loop to grab the pre - rank number. 
+```{r}
+rank_match_list <- str_match_all(data$pre_rank, "\\d{3,4}")
+rank_match_list[[1]]
+
+#The player rank is the third number in each of the 64 lists
+p_rank <- c()
+for (i in 1:64){
+  player_pr <- rank_match_list[[i]][3,1]
+  p_rank <- append(p_rank, player_pr)
+}
+
+#Assign the p_rank vector back into the pre-rank column 
+data$pre_rank <- p_rank 
+
+head(data)
+```
+
+# Finding the average pre-ranks of each players opponents
+
+```{r}
+# Parse out the opponents from the "top_row_remainder" column
+opponents_list <- str_match_all(data$top_row_remainder, "\\d{1,2}")
+
+# Loop through the list of opponents and grab each pre-ranking to calculate the mean 
+opp_pre_rank <- c()
+
+for(i in c(1:64)){
+  opponents <- opponents_list[[i]]
+  opponents_pr <- data[opponents[1:length(opponents),1],"pre_rank"]
+  opponents_pr_num <- as.numeric(unlist(opponents_pr))
+  avg_opp_rank <- mean(opponents_pr_num)
+  opp_pre_rank <- append(opp_pre_rank,avg_opp_rank)
+}
+
+# Round the vector with all the mean opponenet rankings and set it to a new column and drop the top_row_remainder
+data$opponent_avgpr <- round(opp_pre_rank)
+data$top_row_remainder <- NULL
+
+head(data)
+```
+
+# Re-order the columns, clean them and convert the data types to numeric where appropriate
+```{r}
+data <- data[,c(1,3,2,4,5)]
+
+data$player_name <- str_trim(data$player_name)
+data$state <- str_trim(data$state)
+data$total_points <- str_trim(data$total_points)
+data$total_points <- as.numeric(data$total_points)
+data$pre_rank <- as.numeric(data$pre_rank)
+
+data
+```
+
