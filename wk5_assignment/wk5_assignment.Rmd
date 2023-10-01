@@ -1,0 +1,140 @@
+---
+title: 'Wk 5: Tidying and Transforming Data'
+author: "Dirk Hartog"
+date: "2023-10-01"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r load libraries}
+library(dplyr)
+library(tidyverse)
+```
+
+## Assignment – Tidying and Transforming Data
+
+### 1. Created a .CSV file in Google sheets and uploaded it into a Github repository to be laoded into Rstudio
+
+### 2a Read the information from the .CSV file into R
+```{r load csv file}
+url <- "https://raw.githubusercontent.com/D-hartog/DATA607/main/wk5_assignment/airline_status.csv"
+airline_info <- read_csv(url)
+glimpse(airline_info)
+```
+
+### 2b. Used tidyr and dplyr as needed to tidy the data
+
+```{r raname columns}
+# Renamed columns using rename() function
+
+airline_info <- airline_info %>% 
+  rename("airline" = "...1", 
+         "status" = "...2",
+         "Los_Angeles" = "Los Angeles",     
+         "San_Diego" = "San Diego",
+         "San_Francisco" = "San Francisco")
+
+# Dropped any rows with all NA values
+airline_info <- airline_info %>% 
+  filter(rowSums(is.na(airline_info)) != ncol(airline_info))
+
+# Fill in the NA values in the "airline" column
+airline_info[2,"airline"] <- airline_info[1,"airline"]
+airline_info[4,"airline"] <- airline_info[3,"airline"]
+```
+
+### 2c. Transformed table
+```{r}
+# pivot the table into a longer format by moving the city columns to value and creating a new count column
+
+airline_info <- airline_info %>%
+  pivot_longer(
+    cols = Los_Angeles:Seattle,
+    names_to = "dest",
+    values_to = "count"
+  )
+
+# Then pivot the status column into two new columns using the respective count values as values
+airline_info <- airline_info %>%
+  pivot_wider(
+    names_from = status,
+    values_from = count
+  )
+
+airline_info
+```
+
+### 3. Perform analysis to compare the arrival delays for the two airlines.
+
+**Descriptive statistics of delays**
+```{r by airline}
+airline_info %>%
+  group_by(airline) %>%
+  summarise(Mean = mean(delayed),
+            Median = median(delayed),
+            IQR = IQR(delayed),
+            Maximum = max(delayed),
+            Minimum = min(delayed))
+```
+
+```{r by destination}
+airline_info %>%
+  group_by(dest) %>%
+  summarise(Average = mean(delayed),
+            Maximum = max(delayed),
+            Minimum = min(delayed))
+```
+
+**Compare the average proportion of delayed flights between the two airlines**
+```{r}
+# Find the proportion of delays from each airline and the destination
+airline_info <- airline_info %>% 
+  mutate(pct_delayed = (delayed/(delayed + on_time)))
+```
+
+It might be interesting to track this overtime to see any trends in the delays overtime 
+
+
+**Summarizing the average number of flights and average percent of delays by airline**
+```{r average # of delays and average proportion}
+airline_info %>% 
+  group_by(airline) %>%
+  summarize(Avg_delyed_flights = mean(delayed), 
+            Avg_percent_delayed = mean(pct_delayed))
+```
+
+### 4. Visualizations 
+
+**Visualization of the distribution of the data via box plot of number of flights on time and the delayed flights**
+```{r}
+ggplot(data = airline_info, 
+       mapping = aes(y = delayed, x = airline, color = airline)) + 
+  geom_boxplot() + 
+  ylab("Delays") + 
+  xlab("Airline") +
+  ggtitle("Distribution Of Delays") +
+  theme(axis.title.y = element_text(color="#486891", size=18),
+        axis.title.x = element_text(color="#486891", size=18),
+        plot.title = element_text(color="black",
+                                  size=25,
+                                  hjust = 0.5))
+```
+
+**Bar plot of the counts based on airline and destination**
+```{r}
+ggplot(data = airline_info, aes(dest,delayed)) +
+  geom_col(aes(color = airline, fill = airline), 
+           position = "dodge", color = "darkgrey") +
+  ylab("No. of Delays") +
+  xlab("Destination") + 
+  ggtitle("Flight Delays") +
+  theme(axis.title.y = element_text(color="#486891", 
+                                    size=18),
+        axis.title.x = element_text(color="#486891", 
+                                    size=18),
+        plot.title = element_text(color="black",
+                                  size=25,
+                                  hjust = 0.5))
+```
+
