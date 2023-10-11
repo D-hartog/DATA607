@@ -1,0 +1,104 @@
+---
+title: 'Wk 7: Working with XML, HTML and JSON in R'
+author: "Dirk Hartog"
+date: "2023-10-11"
+output: pdf_document
+---
+```{r message=FALSE}
+library(tidyverse)
+library(jsonlite)
+library(XML)
+library(xml2)
+library(stringr)
+library(rvest)
+```
+
+#Pick three of your favorite books on one of your favorite subjects. At least one of the books should have more than one author. For each book, include the title, authors, and two or three other attributes that you find interesting.
+
+## Step 1: Create three files which store the book’s information in HTML (using an html table), XML, and JSON formats and read the information form the web (in this case Github). 
+
+**JSON file**
+```{r read JSON}
+# libraries used: jsonlite, dplyr, stringr 
+
+json_url <- "https://raw.githubusercontent.com/D-hartog/DATA607/main/WK7/books.json"
+json_file <- list(read_json(json_url))
+books_js <- tibble(books = json_file)
+
+# Unnest the list object from the json file
+
+books_js <- books_js %>% unnest_wider(books) %>%
+  unnest_longer(books) %>%
+  unnest_wider(books)
+
+# Expand the cell with a list of two authors 
+
+# -- Unlist that cell into a vector
+authors <- unlist(books_js$author_s[2])
+
+# -- flatten the vector to create a string of the two authors and re-assign it into the cell
+books_js$author_s[2] <- str_flatten(authors, ",")
+
+# -- Use seperate rows function to separate the rows into two (one with each author)
+books_js <- books_js %>% separate_rows(author_s, sep = ",")
+
+# -- Clean up column names and values
+colnames(books_js) <- books_js %>% names() %>% str_to_upper()
+
+books_js$AUTHOR_S <- str_trim(books_js$AUTHOR_S)
+
+books_js
+```
+
+**HTML file**
+```{r read HTML}
+# libraries used: rvest, dplyr, stringr
+
+html_url <- "https://raw.githubusercontent.com/D-hartog/DATA607/main/WK7/books.html"
+
+# read in the file form github
+html_file <- read_html(html_url)
+
+books_html <- html_file %>%
+  html_table(fill = TRUE)
+
+books_html <- books_html[[1]]
+
+# Use seperate rows function to separate the rows into two (one with each author)
+books_html <- books_html %>% separate_rows(author_s, sep = ",")
+
+# Clean up column names and values
+colnames(books_html) <- books_html %>% names() %>% str_to_upper()
+
+books_html$AUTHOR_S <- str_trim(books_html$AUTHOR_S)
+
+books_html
+```
+
+**XML file**
+```{r read xml}
+# libraries used: xml2, dplyr, stringr
+
+xml_url <- "https://raw.githubusercontent.com/D-hartog/DATA607/main/WK7/books.xml"
+
+# Read in xml file from url 
+xml_file <- read_xml(xml_url)
+
+# Extract all the book nodes, transform them into a list and bind_rows()
+books_xml <- xml_file %>%
+  xml_find_all(".//book") %>%
+  as_list() %>% 
+  bind_rows()
+
+# Use seperate rows function to separate the rows into two (one with each author)
+books_xml <- books_xml %>% separate_rows(author_s, sep = ",")
+
+# Clean up column names and values
+colnames(books_xml) <- books_xml %>% names() %>% str_to_upper()
+
+books_xml$AUTHOR_S <- str_trim(books_xml$AUTHOR_S)
+
+books_xml
+```
+
+For the xml and html files one the data frame was constructed, they did both look similar. When initally constructing the dataframe with the json file, the book with two authors were contain in a list within the author column. An extra step was required to unnest that list. Now all the data frames look the same. 
