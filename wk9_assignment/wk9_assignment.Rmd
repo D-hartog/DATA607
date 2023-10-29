@@ -1,0 +1,95 @@
+---
+title: 'Week 9: Web APIs'
+author: "Dirk Hartog"
+date: "2023-10-29"
+output:
+  html_document:
+    df_print: paged
+---
+# The New York Times web site provides a rich set of APIs, as described here: https://developer.nytimes.com/apis. 
+
+## Task: Choose one of the New York Times APIs, construct an interface in R to read in the JSON data, and transform it into an R DataFrame.
+
+### Step 1: Load libraries 
+```{r setup, include=FALSE}
+library(httr2)
+library(httr)
+library(jsonlite)
+library(tidyverse)
+```
+
+### Create a request to the top stories NY Times API
+```{r API request}
+req <- request("https://api.nytimes.com/svc/topstories/v2/science.json?api-key=4ZFLCUM2HxGjmPqm5PvB5InkBUcM7n2I")
+```
+
+```{r check aspects of the request}
+req
+
+req %>% req_headers("Accept" = "application/json")
+
+req %>% req_body_json(list(x = 1, y = 2))
+```
+### Create a response to read data into a data frame
+```{r response}
+resp <- req_perform(req)
+resp %>% resp_content_type()
+resp <- resp %>% resp_body_json()
+```
+
+### Create a data frame
+```{r data frame}
+df <- tibble(resp)
+df <- df[6,]
+df <- df %>% unnest_longer(resp) %>%
+  unnest_wider(resp)
+head(df)
+```
+
+### Select rows and columns we are interested in and create a new df top_stories
+```{r}
+top_stories <- df %>% select(section, title, abstract, url, byline, published_date)
+top_stories <- top_stories[c(-1,-2),]
+glimpse(top_stories)
+```
+
+### Clean and tidy byline column
+```{r }
+# Extract author name and clean white space for easier tidying 
+top_stories$byline <- str_trim(str_extract(top_stories$byline, "\\s\\D*"))
+
+# Widen data frame into author first name and last name 
+top_stories <- top_stories %>% separate_longer_delim(cols = byline, delim = " and ")
+top_stories <- top_stories %>% separate_wider_delim(cols = byline, 
+                            delim = " ", 
+                            names = c("author_fname", "author_lname"),
+                            too_many = "merge")
+```
+
+### Clean published date column
+```{r clean published date}
+top_stories$published_date <- as.Date(top_stories$published_date) 
+top_stories$published_date <- ymd(top_stories$published_date)
+```
+
+### View final data frame
+```{r}
+head(top_stories)
+```
+
+### Data Visualization: The number of articles from each section of the news paper that make up the top stories 
+
+```{r visualization}
+top_stories %>% select(section, title) %>% distinct() %>% 
+  ggplot(aes(x = section, fill = section)) + 
+  geom_bar() +
+  geom_text(aes(label = ..count..), stat = "count", vjust = 3, color = "white") +
+  ggtitle("Top Stories By Section") + 
+  xlab("Section") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.text.x = element_text(size=8),
+        plot.title = element_text(color = "black",
+                                  size=16))
+```
+
