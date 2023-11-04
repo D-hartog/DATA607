@@ -1,0 +1,219 @@
+---
+title: "Tidyverse Create"
+author: "Dirk Hartog"
+date: "2023-11-04"
+output: pdf_document
+---
+## Using one or more TidyVerse packages, and any dataset from fivethirtyeight.com or Kaggle, create a programming sample “vignette” that demonstrates how to use one or more of the capabilities of the selected TidyVerse package with your selected dataset. 
+
+```{r}
+# Load the tidyverse library 
+library(tidyverse)
+
+# List all the packages in tidyverse 
+tidyverse_packages()
+```
+For this project we will create an example using the googledrive and googlesheets4 packages. These packages are helpful to manage data and files stored in a google drive. We can easily access the data for manipulation and use in R studio for projects. 
+
+Reference: https://www.youtube.com/watch?v=Bdvqtb7fsH0
+
+```{r install packages}
+#install.packages("googledrive")
+#install.packages("googlesheets4")
+```
+
+# Package: googledrive
+
+```{r load and inspect}
+library(googledrive)
+ls("package:googledrive")
+```
+
+*1. Our first task will be to download a file from our drive.*
+
+Run googledrive::drive_auth() to connect with your google drive. This should open up your google drive asking for your permission to connect to tidyverse
+
+```{r}
+drive_auth()
+```
+
+Since we are downloading a file from drive, we want to set our local directory to where the file will be kept 
+
+```{r}
+setwd("/Users/dirkhartog/Desktop/CUNY_MSDS/DATA_607/Tidyverse")
+```
+
+Use google::drive_find() and set type to "folder" and use the q parameter to find the folder you want to work with. This will return a table with any folder that matches the pattern in the q parameter
+
+```{r}
+drive_find(type = "folder", q = "name contains 'Tidy'")
+```
+
+You can copy and past the id of the folder you want to use into google::drive_ls() to find the id of the file you want to upload.
+
+```{r}
+drive_ls(path = as_id("1Px9cboC17Qd9a8nulg1yADlYJWL6r_VY"))
+```
+
+Use googledrive::drive_get() and set the parameter path using as_id() to id of the file you want from that folder. You can save this to a variable called target_file that wil be used to download the file.
+
+```{r}
+target_file <- drive_get(path = as_id("178m3yKYkiLnggmNLNyBWUS2joVIL7zBO"))
+```
+
+
+Use googledrive::drive_download() to download the csv file from google drive. 
+
+ + The file parameter is set to our target file from google drive. 
+ + type is set to the type of desired export 
+ + path is set to the path to the local directory on your computer or if we are already pointing to the directory just need to supply the file name we want to save it as.
+
+```{r}
+drive_download(file = target_file, 
+               type = "csv", 
+               path = "marvel_movies.csv", 
+               overwrite = TRUE) 
+```
+
+in this code chunk we check that the file is in your local directory and read it into R studio to clean and transform the data. Finally we write the file to our local directory. 
+
+```{r}
+list.files()
+movies <- read_csv("marvel_movies.csv")
+head(movies)
+
+names(movies) <- c("Film", "Category", "Worldwide_gross_mil", "Budget_recoverd_pct",
+                   "Critic_score_pct", "Audience_score_pct", "Audience_critic_diff", 
+                   "Budget", "Domestic_gross_mil", "International_gross_mil",
+                   "Opening_weekend_mil", "Second_weekend_mil", "Weekend_drop", 
+                   "Pct_gross_opening", "Pct_gross_domestic", "Pct_gross_int", 
+                   "Pct_budget_opening", "Year", "Source")
+library(stringr)
+
+cols_to_use <- c("Budget_recoverd_pct", "Critic_score_pct", "Audience_score_pct", 
+                 "Audience_critic_diff", "Weekend_drop", "Pct_gross_opening", 
+                 "Pct_gross_domestic", "Pct_gross_int", "Pct_budget_opening")
+
+movies$Budget_recoverd_pct <- as.double(str_extract(movies$Budget_recoverd_pct, "\\d+"))
+movies$Critic_score_pct <- as.double(str_extract(movies$Critic_score_pct, "\\d+"))
+movies$Audience_score_pct <- as.double(str_extract(movies$Audience_score_pct, "\\d+"))
+movies$Audience_critic_diff <- as.double(str_extract(movies$Audience_critic_diff, "\\d+"))
+movies$Weekend_drop <- as.double(str_extract(movies$Weekend_drop, "\\d+"))
+movies$Pct_gross_opening <- as.double(str_extract(movies$Pct_gross_opening, "\\d+"))
+movies$Pct_gross_domestic <- as.double(str_extract(movies$Pct_gross_domestic, "\\d+"))
+movies$Pct_gross_int <- as.double(str_extract(movies$Pct_gross_int, "\\d+"))
+movies$Pct_budget_opening <- as.double(str_extract(movies$Pct_budget_opening, "\\d+"))
+
+glimpse(movies)
+
+write_csv(movies, "marvel_movies.csv")
+```
+
+
+*2. Re-upload it back to our drive*
+
+Use googledrive::drive_get() to target which directory in your google drive you want to upload the file to.
+
+```{r}
+td <- drive_get(path = as_id("1Px9cboC17Qd9a8nulg1yADlYJWL6r_VY"))
+```
+
+Use google::drive_upload() to upload a file to your google drive. 
++ We need to create a character vector with the file name from the local local directory you wish to upload. 
++ Set the file you will to upload and assign it to media
++ Set your google drive directory to path.
++ Set the file name 
++ Set the type to speadsheet that will save it as a google sheet
+ *in this exmaple we will use a different file name to confirm that it uploaded *
+
+```{r}
+file <- "marvel_movies.csv"
+
+drive_upload(media = file, path = as_id(td), 
+             name = "marvel_movies2.csv",
+             type = "spreadsheet")
+
+```
+
+
+Finally we can check the drive directory to see if the file was uploaded
+```{r}
+drive_ls(path = as_id("1Px9cboC17Qd9a8nulg1yADlYJWL6r_VY"))
+```
+# Package: googlesheests4 
+
+With googlesheets4 we don't need to write the downloaded file to our local directory and can read the file right from our google drive. In this example we will look at reading a **google sheet** (not a csv file) in from google drive, do some data transformation and then upload it back to our drive. 
+
+Use googlesheets4::gs4_auth() to connect to our drive
+```{r}
+library(googlesheets4)
+
+gs4_auth()
+```
+
+Use google::drive_find() and set type to "folder" and use the q parameter to find the folder you want to work with. This will return a table with any folder that matches the pattern in the q parameter
+
+```{r}
+drive_find(type = "folder", q = "name contains 'Tidy'")
+```
+
+You can copy and past the id of the folder you want to use into google::drive_ls() to find the id of the file you want to upload.
+
+```{r}
+drive_ls(path = as_id("1Px9cboC17Qd9a8nulg1yADlYJWL6r_VY"))
+```
+
+Get the target directory/sheet we want to work with. We will use the googledrive::drive_get() to get the file.
+
+```{r}
+file2 <- drive_get(path = as_id("1YW__n_d1OYj9Z7YejQiG-bgUqXS4D6v6zKElB-90iVM"))
+```
+
+
+Use googlesheets4::read_sheet() that reads the google sheet as a the data frame directly if we want to work the file in R. The function read_sheet() read some of the columns in as a list so we need to do one extra step of unlisting those columns. 
+
+```{r}
+museumsdf <- read_sheet(file2)
+
+head(museumsdf)
+```
+
+```{r}
+colnames(museumsdf)
+
+museumsdf$'Gallery space in m2 (sq ft)' <- NULL
+
+museumsdf$'Gallery space in sq ft' <- str_extract_all(museumsdf$'Gallery space in sq ft', "(\\d+.\\d{3})")
+
+museumsdf <- museumsdf %>% unnest_wider(col = 'Gallery space in sq ft', names_sep = ".")
+
+names(museumsdf) <- c("Name", "City", "Country", "Sq_m", "Sq_ft", "Year_est")
+
+glimpse(museumsdf)
+```
+
+We can write the sheet back to google drive using googlesheets4::range_write()
+
+```{r}
+range_write(file2, # URL with the file id
+            museumsdf, # A data frame
+            sheet = NULL, # sting name of the sheet or numerical position
+            range = NULL, # cell range 
+            col_names = TRUE, 
+            reformat = TRUE)
+
+```
+
+We can re load our sheet to check that our changes have over written our exisiting sheet
+
+```{r}
+file2 <- drive_get(path = as_id("1YW__n_d1OYj9Z7YejQiG-bgUqXS4D6v6zKElB-90iVM"))
+
+museumsdf <- read_sheet(file2)
+
+museumsdf$Year_est <- unlist(museumsdf$Year_est)
+
+head(museumsdf)
+```
+
+
