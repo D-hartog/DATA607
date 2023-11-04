@@ -1,0 +1,147 @@
+---
+title: 'Wk 10: Sentiment Analysis'
+author: "Dirk Hartog"
+date: "2023-11-01"
+output:
+  html_document:
+    df_print: paged
+---
+## Sentiment Analysis: A process of analyzing digital text to determine if the emotional tone of the message is positive, negative, or neutral
+
+```{r load libraries}
+library(tidyverse)
+library(tidytext)
+library(textdata)
+library(stringr)
+library(janeaustenr)
+library(syuzhet)
+```
+
+Base code from chapter 2 that we will be working with. This includes a collection of works by author Jane Austen
+
+```{r base code}
+tidy_books <- austen_books() %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+glimpse(tidy_books)
+```
+
+### Reference
+
+Silge J, Robinson D. Welcome to Text Mining with R: A Tidy Approach.
+August 1, 2017. Section 2.2. O'Reilly Media.
+[URL](https://www.tidytextmining.com/). 
+
+### Extend the code in two ways:
+
+a. Work with a different corpus of your choosing: 
+[Reference to Sherlock Holmes Data](https://github.com/EmilHvitfeldt/sherlock/blob/master/data-raw/holmes.R)
+
+```{r sherlock}
+devtools::install_github("EmilHvitfeldt/sherlock")
+library(sherlock)
+ls("package:sherlock")
+
+tidy_holmes <- holmes %>%
+  group_by(book) %>%
+  mutate(
+    linenumber = row_number(),
+    chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
+
+data(stop_words) # loads a data frame of stop words
+
+tidy_holmes <- tidy_holmes %>%
+  anti_join(stop_words) %>% filter(chapter == !0)
+
+head(tidy_holmes)
+
+tidy_holmes %>% distinct(book)
+```
+
+b. Incorporate at least one additional sentiment lexicon. Through researching on the internet I came across this [Rpubs article](https://rpubs.com/chelseyhill/676279) that mentioned a package called "syuzhet" that had a lexicon called Jockers. 
+ * It contains 10,738 words
+ * Aims to incorporate emotional shifts in text
+ * Classifications: polarity and intensity. scores range from -1 to +1 (continuous)
+ 
+Here I chose to compare how those sentiment scores compared to one of the lexicons from chapter 2 of Text Mining with R: A Tidy Approach. In this case I used the nrc lexicon to compare it to the syuzhet lexicon in the visualization that follows. The nrc lexicon associates a sentiment to a word and I used only the positive and negative words to create a sentiment total 
+
+I wanted to create one data frame to use for visualizing the trend throughout the story lines. 
+
+Step 1: Created seperate data frames with each of the lexicons dictionary of words
+```{r lexicon data frames}
+# 
+syuzhet <- tibble(get_sentiment_dictionary(dictionary = "syuzhet", language = "English"))
+nrc <- get_sentiments("nrc") %>% 
+  filter(sentiment %in% c("positive", 
+                          "negative"))
+```
+
+Step 2: I joined each lexicons dictionaries with the words in the tidy_holmes data frame and then combined the two. I followed a similar procedure as the one in the book to create columns of the total sentiment in 25 lines of the book. 
+
+```{r}
+nrc_holmes <- tidy_holmes %>% inner_join(nrc, relationship = "many-to-many") %>%
+  count(book, index = linenumber %/% 25, sentiment) %>% 
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative, lexicon = "nrc")
+
+syuzhet_holmes <- tidy_holmes %>% inner_join(syuzhet, relationship = "many-to-many") %>% 
+  mutate(index = linenumber %/% 25) %>%
+  group_by(book, index) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(lexicon = "syuzhet")
+
+sentiment_df <- bind_rows(nrc_holmes, syuzhet_holmes) %>% select(c(1,2,5,6))
+
+head(sentiment_df)
+```
+
+### Visualizations 
+
+1. I thought it would be interesting to visualize the sentiment through the arc of the stories using the calcualted sentiment values from the syuzhet lexicon. 
+
+```{r syuzhet vs. nrc}
+sentiment_df %>% filter(lexicon == "syuzhet") %>%
+  ggplot(aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_y")
+```
+
+2. Next I also wanted to compare sentiment through the story between two different lexicons 
+
+```{r}
+sentiment_df %>% filter(book == "The Hound of the Baskervilles") %>%
+ggplot(aes(index, sentiment, fill = lexicon)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~lexicon, ncol = 1, scales = "free_y")
+```
+
+
+### Conclusions 
+
+Across all the books in the Sherlock Holmes data set we see that the sentiment fluctuates from beginning to end and most books tend to end with a neutral tone. When looking at the arc of "The Hound of the Baskervilles" each lexicon follows a similar trend except at index 6 were the sentiment looks to be evaluated quite differently between the two lexicons. Further investigation reveals that not all the same words were identified by each lexicon. This may have been from filtering out only the negative and positive words from the NRC dictionary.
+
+```{r}
+bind_cols(tidy_holmes %>% mutate(index = linenumber %/% 25) %>% 
+  filter(index == 6 & book == "The Hound of the Baskervilles") %>%
+  inner_join(syuzhet, relationship = "many-to-many") %>% 
+  select(SYUZHET_word = word, SYUZHET_value = value),
+
+tidy_holmes %>% mutate(index = linenumber %/% 25) %>% 
+  filter(index == 6 & book == "The Hound of the Baskervilles") %>%
+  inner_join(nrc, relationship = "many-to-many") %>% 
+  mutate(sentiment = ifelse(sentiment == "positive", 1, 0)) %>% 
+  select(NRC_word = word, NRC_value = sentiment)
+)
+```
+
