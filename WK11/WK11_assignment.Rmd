@@ -1,0 +1,71 @@
+---
+title: 'WK 11: Recommender Systems'
+author: "Dirk Hartog"
+date: "2023-11-06"
+output: pdf_document
+---
+
+Week 11 assignment and discussion: Your task is to analyze an existing recommender system that you find interesting.  
+
+## Introduction 
+
+Spotify is a digital music streaming app that started in 2008, offers users a free or paid subscription and has a library of over 80 million songs. In this project I will look at the recommender system that offer users a unique experience in listening and discovering music. What is interesting about spotify is that the company doesn't just provide only music listeners with recommendations, it also gives artists recommendations and data driven feedback about their music, similar to an ecommerace website that provides a seller insights into their products. For this assignment I will focus only on the recommender system that spotify employs for users. 
+
+## Scenario Design Analysis: Spotify as a company
+Who are the target users? 
+
++ Spotify intends to target individuals who are looking for a platform that gives them access to music from a wide library of content. It also targets users who like having other digital content in one app like podcasts or audiobooks. Another demographic that Spotify targets are the artists, manager or label employees themselves looking to track their music. 
+
+What are their key goals? 
+
++ The key goals are to turn users in paid subscribers and to retain paid subscribers with ad free listening and offering listening features that are not available with a free account. 
++ Another goal is to target 
+
+How can you accomplish those? 
+
++ For users to start listening to music Spotify requires that you create an account, either a free or paid subscription.
++ For artists, Spotify offers many features to upload and then gain insights about your music by creating a separate artist account. 
+
+## Scenario Design Analysis: Spotify's users
+Who are the target users?
+
++ Users targets are their favorite artists or talk show hosts
+
+What are their key goals 
+
++ A Spotify user aims to easily and efficiently find music, save it to their own library and curate/control their own playlists. 
+
+How can you accomplish those goals?
+
++ Those looking to use Spotify can download the app onto a mobile device and/or a computer, as well as access spotify through a web browser. Users can begin listening to music once they have created an account. 
+
+## Reverse engineering the recommener system
+what you can about the site, from the site interface and any available information that you can find on the Internet or elsewhere. 
+
+As a Spotify user, my first instincts and simplistic assumption on how the recommneder system works is by identifying...
+
++ The music that I have saved to my library
++ How many times I have listened to a track
++ How many times I accessed a playlist
++ How many songs I saved from specific playlists 
++ Tracks that I have added to a playlist
+
+Based on this data songs that match similar characteristics of the tracks are the ones that make it the sections where recommendations are posted. 
+
+Article written in 2022 was helpful in describing in much more detail how the Spotify recommender algorithm works. ["Inside Spotify’s Recommender System: A Complete Guide to Spotify Recommendation Algorithms"](https://www.music-tomorrow.com/blog/how-spotify-recommendation-system-works-a-complete-guide-2022). According to this article Spotify utilizes several independent machine learning models and algorithms to generate item/track representations and user representation. If you are interested in reading more than the general breakdown below, click on the link above. 
+
+Spotify's approach to track representation is made up of two primary components:
+
+1. Content-based filtering, aiming to describe the track by examining the content itself
+2. Collaborative filtering, aiming to describe the track in its connection with other tracks on the platform by studying user-generated assets
+
+Spotify's approach to user profiling on begins with logging all of the user's listening activity, split into separate context-rich listening sessions. This user feedback can be split into two primary categories: 
+
+1. Explicit, or active feedback: library saves, playlist adds, shares, skips, click-through to artist/album page, artist follows, "downstream" plays 
+2. Implicit, or passive feedback: listening sessions length, track playthrough, and repeat listens
+
+
+## Include specific recommendations about how to improve the site's recommendation capabilities going forward. 
+
+While this recommender system seems like it accounts and integrates a lot data I still think that some specific things can be addressed. As a user I would like to be able to give some explicit feedback about if the recommendations were helpful or not. I think if the recommender system was able to generate an option to see other recommendations based of a search song would be helpful to quickly identify similar songs.
+
